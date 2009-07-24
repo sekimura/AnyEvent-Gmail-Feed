@@ -1,0 +1,89 @@
+package AnyEvent::Gmail::Feed;
+
+use strict;
+use 5.008_001;
+our $VERSION = '0.01';
+
+use AnyEvent;
+use AnyEvent::HTTP;
+use MIME::Base64;
+use XML::Atom::Feed;
+
+sub new {
+    my ($class, %args) = @_;
+
+    my $username = delete $args{username};
+    my $password = delete $args{password};
+    my $label    = delete $args{label};
+    my $interval = delete $args{interval} || 60;
+
+    unless ($username && $password) {
+        die "both username and password are required";
+    }
+
+    my $self = bless {}, $class;
+
+    my $auth = MIME::Base64::encode( join(":", $username, $password) );
+    my $headers = {Authorization => "Basic $auth"};
+    my $uri = 'https://mail.google.com/mail/feed/atom/';
+    $uri .= $label . '/' if $label; ## 'unread' or whatever
+
+    my $check_update; $check_update = sub {
+        http_get $uri, headers => $headers, sub {
+            my ($body, $hdr) = @_;
+            return unless $body;
+            my $feed = XML::Atom::Feed->new(\$body) or return;
+            ($args{on_feed} || sub {})->($feed);
+            sleep($interval);
+            $check_update->();
+        };
+    };
+    $check_update->();
+    return $self;
+}
+
+1;
+__END__
+
+=encoding utf-8
+
+=for stopwords
+
+=head1 NAME
+
+AnyEvent::Gmail::Feed - Subscribe to Gmail feed
+
+=head1 SYNOPSIS
+
+  use AnyEvent;
+  use AnyEvent::Gmail::Feed;
+
+  AnyEvent::Gmail::Feed->new(
+      username => $user,     #required
+      password => $pass,     #required
+      label    => $label,    #optional (eg. 'unread')
+      interval => $interval, #optional (60s by default)
+      on_feed => sub {
+          my $feed = shift; #XML::Atom::Feed instance
+          for my $e ($feed->entries) {
+              use Data::Dumper; warn Dumper $e->as_xml;
+          }
+      },
+  AnyEvent->condvar->recv;
+
+=head1 DESCRIPTION
+
+AnyEvent::Gmail::Feed is an AnyEvent consumer which checks GMail unread messages
+
+=head1 AUTHOR
+
+Masayoshi Sekimura E<lt>sekimura@cpan.orgE<gt>
+
+=head1 LICENSE
+
+This library is free software; you can redistribute it and/or modify
+it under the same terms as Perl itself.
+
+=head1 SEE ALSO
+
+=cut
