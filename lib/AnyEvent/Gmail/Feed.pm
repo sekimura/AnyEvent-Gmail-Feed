@@ -29,22 +29,25 @@ sub new {
     $uri .= $label . '/' if $label; ## 'unread' or whatever
 
     my %seen;
-    my $check_update; $check_update = sub {
-        http_get $uri, headers => $headers, sub {
-            my ($body, $hdr) = @_;
-            return unless $body;
-            my $feed = XML::Atom::Feed->new(\$body) or return;
-            for my $e ($feed->entries) {
-                unless ($seen{$e->id}) {
-                    ($args{on_new_entry} || sub {})->($e);
-                };
-                $seen{$e->id}++;
-            }
-            sleep($interval);
-            $check_update->();
-        };
-    };
-    $check_update->();
+
+    my $done = AnyEvent->condvar;
+    my $timer = AnyEvent->timer(
+        interval => $interval,
+        cb => sub {
+            http_get $uri, headers => $headers, sub {
+                my ($body, $hdr) = @_;
+                return unless $body;
+                my $feed = XML::Atom::Feed->new(\$body) or return;
+                for my $e ($feed->entries) {
+                    unless ($seen{$e->id}) {
+                        ($args{on_new_entry} || sub {})->($e);
+                    };
+                    $seen{$e->id}++;
+                }
+            };
+        }
+    );
+    $done->recv;
     return $self;
 }
 
@@ -91,11 +94,13 @@ it under the same terms as Perl itself.
 
 =head1 SEE ALSO
 
+L<AnyEvent::Feed>
+
 L<AnyEvent>
 
 L<AnyEvent::HTTP>
 
-L<Atom::Feed::Entry>
+L<XML::Atom::Entry>
 
 L<http://code.google.com/apis/gdata/faq.html#GmailAtomFeed>
 
