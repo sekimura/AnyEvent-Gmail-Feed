@@ -91,4 +91,12 @@ it under the same terms as Perl itself.
 
 =head1 SEE ALSO
 
+L<AnyEvent>
+
+L<AnyEvent::HTTP>
+
+L<Atom::Feed::Entry>
+
+L<http://code.google.com/apis/gdata/faq.html#GmailAtomFeed>
+
 =cut
