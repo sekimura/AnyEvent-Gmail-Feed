@@ -30,24 +30,22 @@ sub new {
 
     my %seen;
 
-    my $done = AnyEvent->condvar;
-    my $timer = AnyEvent->timer(
-        interval => $interval,
-        cb => sub {
-            http_get $uri, headers => $headers, sub {
-                my ($body, $hdr) = @_;
-                return unless $body;
-                my $feed = XML::Atom::Feed->new(\$body) or return;
-                for my $e ($feed->entries) {
-                    unless ($seen{$e->id}) {
-                        ($args{on_new_entry} || sub {})->($e);
-                    };
-                    $seen{$e->id}++;
-                }
-            };
-        }
-    );
-    $done->recv;
+    my $timer;
+    my $checker; $checker = sub {
+        http_get $uri, headers => $headers, sub {
+            my ($body, $hdr) = @_;
+            return unless $body;
+            my $feed = XML::Atom::Feed->new(\$body) or return;
+            for my $e ($feed->entries) {
+                unless ($seen{$e->id}) {
+                    ($args{on_new_entry} || sub {})->($e);
+                };
+                $seen{$e->id}++;
+            }
+            $timer = AnyEvent->timer( after => $interval, cb => $checker);
+        };
+    };
+    $checker->();
     return $self;
 }
 
