@@ -18,15 +18,10 @@ sub run {
         username => $self->username,
         password => $self->password,
         interval => $self->interval,
-        on_feed => sub {
-            my $feed = shift;
-            for my $e ($feed->entries) {
-                unless ($seen{$e->id}){
-                    ## you can send notify with Growl, Notify-OSD or whatever
-                    warn "send notify: " . $e->summary;
-                }
-                $seen{$e->id}++;
-            }
+        on_new_entry => sub {
+            my $entry = shift;
+            ## you can send notify with Growl, Notify-OSD or whatever
+            warn "send notify: " . $entry->summary;
         },
     );
     AnyEvent->condvar->recv;

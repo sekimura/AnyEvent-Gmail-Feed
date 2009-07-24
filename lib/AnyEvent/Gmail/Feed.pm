@@ -28,12 +28,18 @@ sub new {
     my $uri = 'https://mail.google.com/mail/feed/atom/';
     $uri .= $label . '/' if $label; ## 'unread' or whatever
 
+    my %seen;
     my $check_update; $check_update = sub {
         http_get $uri, headers => $headers, sub {
             my ($body, $hdr) = @_;
             return unless $body;
             my $feed = XML::Atom::Feed->new(\$body) or return;
-            ($args{on_feed} || sub {})->($feed);
+            for my $e ($feed->entries) {
+                unless ($seen{$e->id}) {
+                    ($args{on_new_entry} || sub {})->($e);
+                };
+                $seen{$e->id}++;
+            }
             sleep($interval);
             $check_update->();
         };
@@ -63,12 +69,11 @@ AnyEvent::Gmail::Feed - Subscribe to Gmail feed
       password => $pass,     #required
       label    => $label,    #optional (eg. 'unread')
       interval => $interval, #optional (60s by default)
-      on_feed => sub {
-          my $feed = shift; #XML::Atom::Feed instance
-          for my $e ($feed->entries) {
-              use Data::Dumper; warn Dumper $e->as_xml;
-          }
+      on_new_entry => sub {
+          my $entry = shift; #XML::Atom::Entry instance
+          use Data::Dumper; warn Dumper $entry->as_xml;
       },
+  );
   AnyEvent->condvar->recv;
 
 =head1 DESCRIPTION
