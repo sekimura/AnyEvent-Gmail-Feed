@@ -4,6 +4,7 @@ all_from 'lib/AnyEvent/Gmail/Feed.pm';
 
 requires 'AnyEvent';
 requires 'AnyEvent::HTTP';
+requires 'MIME::Base64';
 requires 'Net::SSLeay';
 requires 'XML::Atom::Feed';
 
