@@ -3,6 +3,7 @@ package GmailNotifier;
 use Moose;
 use AnyEvent;
 use AnyEvent::Gmail::Feed;
+use Mac::Growl ':all';
 
 with 'MooseX::Getopt';
 
@@ -14,14 +15,15 @@ sub run {
     my ($self, %args) = @_;
 
     my %seen;
+    RegisterNotifications('GmailNotifier',  ['email.arrived'], ['email.arrived']);
     AnyEvent::Gmail::Feed->new(
         username => $self->username,
         password => $self->password,
         interval => $self->interval,
         on_new_entry => sub {
             my $entry = shift;
-            ## you can send notify with Growl, Notify-OSD or whatever
             warn "send notify: " . $entry->summary;
+            PostNotification('GmailNotifier',  'email.arrived', $entry->title, $entry->summary);
         },
     );
     AnyEvent->condvar->recv;
